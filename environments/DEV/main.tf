@@ -25,6 +25,14 @@ terraform {
   }
 }
 
+provider "azurerm" {
+  features {}
+}
+
+provider "azapi" {}
+
+provider "random" {}
+
 resource "azurerm_resource_group" "my_devops_rg" {
   name     = "rg-dev"
   location = "East US"

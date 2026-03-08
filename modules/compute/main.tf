@@ -1,21 +1,28 @@
-resource "azurerm_resource_group" "my_devops_rg" {
-  name     = var.rg_name
-  location = var.rg_location
+resource "azurerm_network_interface" "vm_nic" {
+  name                = "${var.vm_name}-nic"
+  location            = var.location
+  resource_group_name = var.rg_name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = var.subnet_id
+    private_ip_address_allocation = "Dynamic"
+  }
 }
 
-resource "azurerm_linux_virtual_machine" "example" {
+resource "azurerm_linux_virtual_machine" "vm_azure" {
   name                = var.vm_name
-  resource_group_name = azurerm_resource_group.my_devops_rg.name
-  location            = azurerm_resource_group.my_devops_rg.location
-  size                = "Standard_B1s"
+  resource_group_name = var.rg_name
+  location            = var.location
+  size                = var.vm_size
   admin_username      = "adminuser"
   network_interface_ids = [
-    azurerm_network_interface.example.id,
+    azurerm_network_interface.vm_nic.id,
   ]
 
   admin_ssh_key {
     username   = "adminuser"
-    public_key = file("~/.ssh/id_rsa.pub")
+    public_key = var.ssh_public_key
   }
 
   os_disk {
