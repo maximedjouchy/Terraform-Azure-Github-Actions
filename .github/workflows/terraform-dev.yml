@@ -11,6 +11,8 @@ on:
     paths:
       - 'environments/dev/**'
       - 'modules/**'
+  # Permet de déclencher le workflow manuellement depuis l'onglet Actions
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -30,7 +32,6 @@ jobs:
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      # On garde la variable d'env, maison ajoute des guillemets pour la sécurité
       TF_VAR_ssh_public_key: "${{ secrets.SSH_PUBLIC_KEY }}"
 
     steps:
@@ -44,12 +45,10 @@ jobs:
         run: terraform init -input=false
 
       - name: Terraform Plan
-        # On force le passage de la variable et on interdit toute demande de saisie interactive
         run: terraform plan -no-color -input=false -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
 
   terraform-apply:
     name: 'Terraform Apply'
-    # S'exécute uniquement sur un push sur main
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: terraform-plan
     runs-on: ubuntu-latest
@@ -76,5 +75,34 @@ jobs:
         run: terraform init -input=false
 
       - name: Terraform Apply
-        # Ajout de -input=false et de la variable ici aussi pour la cohérence
         run: terraform apply -auto-approve -input=false -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
+
+  terraform-destroy:
+    name: 'Terraform Destroy'
+    # S'exécute uniquement via le bouton manuel "Run workflow"
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: dev
+    defaults:
+      run:
+        working-directory: 'environments/dev'
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      TF_VAR_ssh_public_key: "${{ secrets.SSH_PUBLIC_KEY }}"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -input=false -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
