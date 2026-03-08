@@ -4,13 +4,13 @@ on:
   push:
     branches: [ "main", "dev" ]
     paths:
-      - 'Terraform/environments/dev/**'
-      - 'Terraform/modules/**'
+      - 'environments/dev/**'
+      - 'modules/**'
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'Terraform/environments/dev/**'
-      - 'Terraform/modules/**'
+      - 'environments/dev/**'
+      - 'modules/**'
 
 permissions:
   contents: read
@@ -24,7 +24,7 @@ jobs:
     environment: dev 
     defaults:
       run:
-        working-directory: './Terraform/environments/dev'
+        working-directory: 'environments/dev'
 
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -53,7 +53,7 @@ jobs:
     environment: dev
     defaults:
       run:
-        working-directory: './Terraform/environments/dev'
+        working-directory: 'environments/dev'
 
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
