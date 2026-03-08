@@ -1,17 +1,31 @@
 variable "rg_name" {
     type = string
     description = "name of the resource group"
-    default = "devops_resourcegroup"
 }
 
 variable "vm_name" {
     type = string
     description = "name of the virtual machine"
-    default = "mydevops_vm"
 }
 
-variable "rg_location" {
+variable "vm_size" {
+    type = string
+    description = "size of the virtual machine"
+    default = "Standard_B1s"
+}
+
+variable "location" {
     type = string
     description = "location of resource group"
-    default = "us-east2"
+    default = "East US"
+}
+
+variable "subnet_id" {
+  description = "ID du subnet provenant du module network"
+  type        = string
+}
+
+variable "ssh_public_key" {
+  description = "ssh public key for github"
+  type        = string
 }
