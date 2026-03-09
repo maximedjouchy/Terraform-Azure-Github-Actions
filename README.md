@@ -1,60 +1,103 @@
-Infrastructure as Code : Déploiement Azure avec Terraform & GitHub Actions
+# Infrastructure as Code: Azure Deployment with Terraform & GitHub Actions
 
-Ce projet automatise le déploiement d'une infrastructure complète sur Azure (Réseau, Sécurité, Machine Virtuelle) en utilisant Terraform et un pipeline CI/CD robuste.
+This project automates the deployment of a complete infrastructure on Azure (Networking, Security, and Virtual Machines) using Terraform and a robust CI/CD pipeline.
 
-🚀 Architecture Déployée
+## 🚀 Deployed Architecture
+* **Resource Group**: A logical container for all infrastructure resources.
+* **VNet & Subnet**: An isolated virtual network for secure communication.
+* **Network Security Group (NSG)**: Firewall rules configured to allow SSH access.
+* **Linux VM**: An Ubuntu instance configured with a secure SSH public key.
+* **Remote Backend**: Terraform state stored in Azure Blob Storage with lease locking to prevent concurrent execution conflicts.
 
-Resource Group : Conteneur logique pour toutes les ressources.
-VNet & Subnet : Réseau virtuel isolé pour la communication.
-Network Security Group (NSG) : Règles de pare-feu pour autoriser le SSH.
-Linux VM : Instance Ubuntu configurée avec une clé SSH sécurisée.
-Remote Backend : État Terraform stocké sur Azure Blob Storage avec verrouillage (lease).
 
-🛠️ PrérequisUn compte Azure avec une souscription active.Un dépôt GitHub.
-Une paire de clés SSH (Générée via ssh-keygen -t rsa -b 4096).
 
-1️⃣ Préparation du Backend Azure
+---
 
-Terraform doit stocker son fichier d'état (.tfstate) sur Azure pour permettre le travail collaboratif.
+## 🛠️ Prerequisites
+* An **Azure Account** with an active subscription.
+* A **GitHub Repository**.
+* An **SSH Key Pair** (Generated via `ssh-keygen -t rsa -b 4096`).
 
-Créez un Storage Account et un Blob Container (nommé tfstate).
+---
 
-Notez les informations suivantes pour le fichier main.tf du backend :resource_group_namestorage_account_namecontainer_namekey (ex: dev.terraform.tfstate)
+## 1️⃣ Azure Backend Preparation
+Terraform must store its state file (`.tfstate`) on Azure to enable collaborative work and state persistence.
 
-2️⃣ Configuration des Secrets GitHubPour que GitHub puisse agir sur Azure, ajoutez les secrets suivants dans Settings > Environments > dev :Nom du SecretDescriptionAZURE_CLIENT_IDID de l'application (Service Principal)AZURE_CLIENT_SECRETMot de passe de l'applicationAZURE_SUBSCRIPTION_IDID de votre abonnement AzureAZURE_TENANT_IDID de votre locataire AzureSSH_PUBLIC_KEYLe contenu de votre clé id_rsa.pub
+1. Create a **Storage Account** and a **Blob Container** (named `tfstate`).
+2. Note the following information for your backend configuration:
+   * `resource_group_name`
+   * `storage_account_name`
+   * `container_name`
+   * `key` (e.g., `dev.terraform.tfstate`)
 
-3️⃣ Structure du Code TerraformAssurez-vous que votre module compute utilise une taille de VM disponible.
+---
 
-Note : Si Standard_B1s est indisponible (Erreur 409), utilisez Standard_B1ms ou Standard_B2s.
+## 2️⃣ GitHub Secrets Configuration
+To allow GitHub Actions to authenticate with Azure, add the following secrets in **Settings > Environments > dev**:
 
-Terraform # modules/compute/main.tf
+| Secret Name | Description |
+| :--- | :--- |
+| `AZURE_CLIENT_ID` | Application (Service Principal) ID |
+| `AZURE_CLIENT_SECRET` | Application Password/Secret |
+| `AZURE_SUBSCRIPTION_ID` | Your Azure Subscription ID |
+| `AZURE_TENANT_ID` | Your Azure Tenant ID |
+| `SSH_PUBLIC_KEY` | The content of your `id_rsa.pub` key |
+
+---
+
+## 3️⃣ Terraform Code Structure
+Ensure your `compute` module uses an available VM size.
+
+> **Note**: If `Standard_B1s` is unavailable (Error 409), use `Standard_B1ms` or `Standard_B2s` to avoid capacity restrictions.
+
+```hcl
+# modules/compute/main.tf
 
 resource "azurerm_linux_virtual_machine" "vm_azure" {
   name                = "vm-dev-01"
   resource_group_name = var.resource_group_name
   location            = var.location
-  size                = "Standard_B1ms" # Taille recommandée pour éviter les quotas
+  size                = "Standard_B1ms" # Recommended size to avoid quota issues
   admin_username      = "adminuser"
-  # ... configuration network_interface_ids ...
+  
+  # ... network_interface_ids configuration ...
+
   admin_ssh_key {
     username   = "adminuser"
     public_key = var.ssh_public_key
   }
 }
 
-4️⃣ Utilisation du Pipeline CI/CDLe workflow se trouve dans .github/workflows/terraform-dev.yml.
-Actions AutomatiquesPush sur dev : Déclenche un Terraform Plan pour prévisualiser les changements.
-Merge sur main : Déclenche le Terraform Apply qui déploie réellement l'infrastructure sur Azure.
-Actions ManuellesDestroy : Allez dans l'onglet Actions, sélectionnez le workflow, et cliquez sur Run workflow pour tout supprimer proprement.
+4️⃣ CI/CD Pipeline Usage
+The workflow is defined in .github/workflows/terraform-dev.yml.
 
-5️⃣ Résolution des Problèmes CourantsErreur : "State blob is already locked"
+Automatic Actions
+Push to dev branch: Triggers a Terraform Plan to preview infrastructure changes.
 
-Si un job est interrompu, Azure garde un "bail" (lease) sur le fichier d'état.
-Allez sur le portail Azure.Trouvez le fichier .tfstate dans votre Blob Storage.
-Cliquez sur Break Lease (Casser le bail).Erreur : "SkuNotAvailable"
-Cela signifie que la taille de la VM choisie n'est plus disponible dans la zone eastus.
-Solution : Modifiez la variable size dans votre code Terraform pour une instance différente (ex: Standard_B1ms).
+Merge to main branch: Triggers the Terraform Apply which performs the actual deployment to Azure.
 
-6️⃣ Accès à la VMUne fois le déploiement réussi (Apply), récupérez l'IP publique dans les logs GitHub Actions ou sur le portail Azure
+Manual Actions
+Destroy: Navigate to the Actions tab, select the workflow, and click Run workflow to safely tear down all resources.
 
-Puis connectez-vous :Bashssh -i ~/.ssh/id_rsa adminuser@<IP_PUBLIQUE_VM>
+5️⃣ Common Troubleshooting
+Error: "State blob is already locked"
+If a job is interrupted, Azure may maintain a "lease" on the state file.
+
+Go to the Azure Portal.
+
+Locate the .tfstate file in your Blob Storage.
+
+Click Break Lease.
+
+Error: "SkuNotAvailable" (Status 409)
+This means the chosen VM size is currently unavailable in the eastus region due to capacity restrictions.
+
+Solution: Update the size variable in your Terraform code to a different instance type (e.g., Standard_B1ms).
+
+6️⃣ Accessing the VM
+Once the deployment succeeds (Apply), retrieve the Public IP address from the GitHub Actions logs or the Azure Portal.
+
+Connect via SSH:
+
+Bash
+ssh -i ~/.ssh/id_rsa adminuser@<VM_PUBLIC_IP>
