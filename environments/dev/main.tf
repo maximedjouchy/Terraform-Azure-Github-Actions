@@ -51,7 +51,7 @@ module "network" {
 module "vm_dev" {
   source         = "../../modules/compute"
   vm_name        = "vm-dev-01"
-  vm_size        = "Standard_B1s"
+  vm_size        = "Standard_B2s"
   rg_name        = azurerm_resource_group.my_devops_rg.name
   location       = azurerm_resource_group.my_devops_rg.location
   subnet_id      = module.network.subnet_id
